@@ -1,0 +1,13 @@
+diff --git a/configs/firefly_rk3588_defconfig b/configs/firefly_rk3588_defconfig
+index ab4e0cae85..1fab838a60 100644
+--- a/configs/firefly_rk3588_defconfig
++++ b/configs/firefly_rk3588_defconfig
+@@ -43,3 +43,8 @@ BR2_PACKAGE_CAN_UTILS=y
+ BR2_PACKAGE_IPROUTE2=y
+ BR2_PACKAGE_LIBSOCKETCAN=y
+ BR2_PREFER_ROCKCHIP_RGA=y
++
++# customization for openSUSE
++BR2_INIT_SYSTEMD=y
++# ROCKCHIP_TEST is broken in combination with systemd
++BR2_PACKAGE_ROCKCHIP_TEST=n

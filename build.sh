@@ -33,17 +33,22 @@ EOT
 
 # Installs the tools we need to execute all the weird things
 function installHostTools() {
-    logInfo "Ensuring all scripting and tool versions are at the required versions"
+    logInfo "Ensuring all scripting and tool versions are at the required versions..."
+    local base_packages=( git git-lfs coreutils pyenv )
+    local general_build_packages=( binutils gcc make )
+    local python2_compile_packages=( readline-devel libbz2-devel sqlite3-devel libopenssl-devel patch )
+    local python3_compile_packages=( tk-devel xz-devel )
+    local firefly_sdk_compile_packages=( bc bison dtc expect fakeroot 'gcc-c++' flex kernel-default-devel rsync time )
     sudo zypper --quiet install -y \
-        git git-lfs coreutils pyenv \
-        gcc make patch \
-        bc bison dtc fakeroot flex kernel-default-devel
+        "${base_packages[@]}" "${general_build_packages[@]}" "${python2_compile_packages[@]}" \
+        "${python3_compile_packages[@]}" "${firefly_sdk_compile_packages[@]}"
 }
 
 function preparePyEnv() {
     # Compile the specific Python versions demanded by the Firefly SDK
     eval "$(pyenv init --path)"
 
+    logInfo "Compiling minimal versions of Python ${PYTHON2_VERSION} and ${PYTHON3_VERSION}..."
     pyenv install --skip-existing "${PYTHON2_VERSION}"
     pyenv install --skip-existing "${PYTHON3_VERSION}"
 }
@@ -77,17 +82,13 @@ function cloneFireflyRepos() {
     curl -Ss --fail --url 'https://gitlab.com/firefly-linux/git-repo/-/raw/default/repo?ref_type=heads' \
         --output ~/bin/repo
     chmod 755 ~/bin/repo
-    echo "Cloning or updating the Firefly Linux SDK repositories..."
+    logInfo "Cloning or updating the Firefly Linux SDK repositories..."
     pyenv global "${PYTHON2_VERSION}" "${PYTHON3_VERSION}"
-    /usr/bin/env python -V
-    /usr/bin/env python3 -V
     mkdir -p "$THIS_SCRIPT_DIR/work/firefly-linux-sdk"
     cd "$THIS_SCRIPT_DIR/work/firefly-linux-sdk"
-    set -x
 
     # If a file from the last project is already present, assume the initial checkout was successful
-    # and directly proceed to updating.
-
+    # and proceed to updating.
     if [[ ! -f external/rkwifibt/LICENSE ]]; then
         # The "y" is the answer to the question "Enable color display in this user account (y/N)?"
         # which seems to be unable to suppress.
@@ -102,6 +103,7 @@ function cloneFireflyRepos() {
     .repo/repo/repo sync -c --no-tags --quiet
 }
 
+# Parse the command line
 function read_parameters() {
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -120,10 +122,29 @@ function read_parameters() {
     done
 }
 
+# Generate the parts from the Firefly Linux SDK which we will loot for the openSUSE image:
+# - U-Boot
+# - Kernel 5.10 with various drivers
+# - Firmware Blobs
+# - Command line utilities for initialising WiFi and BT
 function compileFireflyRepos {
+    logInfo "Compiling the Firefly Linux SDK..."
     cd "${THIS_SCRIPT_DIR}/work/firefly-linux-sdk"
-    ln -rfs device/rockchip/rk3588/roc-rk3588-pc-ubuntu.mk device/rockchip/.BoardConfig.mk
+    ln -rfs device/rockchip/rk3588/itx-3588j-buildroot.mk device/rockchip/.BoardConfig.mk
+    # Because it is forbidden by the Firefly Linux SDK, we must get rid of all entries in $PATH
+    # that contain a space.
+    PATH="$(echo "${PATH}"|perl -npe 's#:#\n#g'| \
+      perl -e '$out=""; while (<>) { if (/ /) {next}; chomp; if (length($out)==0) { $out=$_; } else { $out=$out.":".$_; }} print $out;')"
+    export PATH
     ./build.sh
+}
+
+function patchFireflyRepos {
+    logInfo "Applying patches to the Firefly Linux SDK..."
+    cd "${THIS_SCRIPT_DIR}/work/firefly-linux-sdk/buildroot/"
+    patch -p1 --merge < "${THIS_SCRIPT_DIR}/patches/buildroot-systemd-enable.patch"
+    cd "${THIS_SCRIPT_DIR}/work/firefly-linux-sdk/device/rockchip/"
+    patch -p1 --merge < "${THIS_SCRIPT_DIR}/patches/device-rockchip-build.sh-fix.patch"
 }
 
 echo "Building an image for running openSUSE Leap 15 on the Firefly ITX-3588 board"
@@ -136,4 +157,5 @@ if [[ "$DISABLE_ENVIRONMENT_CHECK" != "1" ]]; then
 fi
 preparePyEnv
 cloneFireflyRepos
+patchFireflyRepos
 compileFireflyRepos

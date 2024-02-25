@@ -1,0 +1,26 @@
+diff --git a/common/build.sh b/common/build.sh
+index 9c4457e..606d1e7 100755
+--- a/common/build.sh
++++ b/common/build.sh
+@@ -1098,7 +1098,9 @@ function build_wifibt(){
+ 	echo "chmod +x tools"
+ 	chmod 755 $RKWIFIBT/tools/brcm_tools/brcm_patchram_plus1
+ 	chmod 755 $RKWIFIBT/tools/brcm_tools/dhd_priv
+-	chmod 755 $RKWIFIBT/src/rk_wifibt_init
++	if [ -f "$RKWIFIBT/src/rk_wifibt_init.c" ]; then
++		chmod 755 $RKWIFIBT/src/rk_wifibt_init
++	fi
+ 	chmod 755 $RKWIFIBT/tools/rtk_hciattach/rtk_hciattach
+ 
+ 	echo "mkdir rootfs dir" $TARGET_ROOTFS_DIR
+@@ -1146,7 +1148,9 @@ function build_wifibt(){
+ 	cp $RKWIFIBT/conf/dnsmasq.conf $TARGET_ROOTFS_DIR/etc/
+ 	cp $RKWIFIBT/tools/brcm_tools/dhd_priv $TARGET_ROOTFS_DIR/usr/bin/
+ 	cp $RKWIFIBT/tools/brcm_tools/brcm_patchram_plus1 $TARGET_ROOTFS_DIR/usr/bin/
+-	cp $RKWIFIBT/src/rk_wifibt_init $TARGET_ROOTFS_DIR/usr/bin/
++	if [ -f "$RKWIFIBT/src/rk_wifibt_init.c" ];then
++		cp $RKWIFIBT/src/rk_wifibt_init $TARGET_ROOTFS_DIR/usr/bin/
++	fi
+ 
+ 	if [[ "$WIFI_CHIP" = "ALL_CY" ]];then
+ 		echo "copy infineon/realtek firmware/nvram to rootfs"
