@@ -147,7 +147,7 @@ function patchFireflyRepos {
     patch -p1 --merge < "${THIS_SCRIPT_DIR}/patches/device-rockchip-build.sh-fix.patch"
 }
 
-echo "Building an image for running openSUSE Leap 15 on the Firefly ITX-3588 board"
+echo "Building an image for running openSUSE Leap 15 on the Firefly ITX-3588J board"
 echo "This script is (C) 2024 Andreas Buschka <kontakt@andreas-buschka.de> and licensed under GPL v2"
 echo ""
 
